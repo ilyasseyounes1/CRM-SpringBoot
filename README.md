@@ -27,7 +27,86 @@
 - Docker + Docker Compose
 
 ---
+# Backend — Communication Diagram
 
+```mermaid
+flowchart TD
+
+    HTTP([HTTP Request]):::gray
+
+    HTTP --> SC
+    HTTP --> JAF
+
+    SC[SecurityConfig\nroute guard]:::purple
+    JAF[JwtAuthFilter\nreads Bearer token]:::purple
+    JU[JwtUtil\ngenerate · validate]:::purple
+
+    SC -.uses.-> JAF
+    JAF --> JU
+    JU -.uses.-> AS
+
+    SC --> AC
+    SC --> CC
+    SC --> TC
+    SC --> CPC
+
+    AC[AuthController\n/api/auth]:::teal
+    CC[CustomerController\n/api/customers]:::teal
+    TC[TaskController\n/api/tasks]:::teal
+    CPC[CampaignController\n/api/campaigns]:::teal
+
+    AC --> AS
+    CC --> CS
+    TC --> TS
+    CPC --> CPS
+
+    AS[AuthService\nregister · login]:::coral
+    CS[CustomerService\nCRUD logic]:::coral
+    TS[TaskService\nCRUD logic]:::coral
+    CPS[CampaignService\nCRUD · send]:::coral
+
+    TS -.also uses.-> CR
+
+    AS --> UR
+    CS --> CR
+    TS --> TR
+    CPS --> CPR
+
+    UR[UserRepository]:::amber
+    CR[CustomerRepository]:::amber
+    TR[TaskRepository]:::amber
+    CPR[CampaignRepository]:::amber
+
+    UR --> DB
+    CR --> DB
+    TR --> DB
+    CPR --> DB
+
+    DB[(MySQL\nusers · customers · tasks · campaigns)]:::blue
+
+    AC & CC & TC & CPC -.all use.-> GEH
+    AC & CC & TC & CPC -.all use.-> AR
+
+    GEH[GlobalExceptionHandler\ncatches all errors]:::gray2
+    AR[ApiResponse\nwraps all responses]:::gray2
+
+    classDef gray   fill:#F1EFE8,stroke:#5F5E5A,color:#2C2C2A
+    classDef purple fill:#EEEDFE,stroke:#534AB7,color:#26215C
+    classDef teal   fill:#E1F5EE,stroke:#0F6E56,color:#04342C
+    classDef coral  fill:#FAECE7,stroke:#993C1D,color:#4A1B0C
+    classDef amber  fill:#FAEEDA,stroke:#854F0B,color:#412402
+    classDef blue   fill:#E6F1FB,stroke:#185FA5,color:#042C53
+    classDef gray2  fill:#F1EFE8,stroke:#5F5E5A,color:#2C2C2A
+```
+
+## Key relationships
+
+- **HTTP request** enters through `JwtAuthFilter` (reads token) and `SecurityConfig` (decides if route is public or protected).
+- **Controllers** receive the validated request and delegate to their **Service**.
+- **Services** contain all business logic and call the **Repository** to access the database.
+- **TaskService** also calls `CustomerRepository` to resolve the linked customer when creating a task.
+- **JwtUtil** is used by `JwtAuthFilter` to validate tokens, and by `AuthService` to generate them on login/register.
+- **GlobalExceptionHandler** and **ApiResponse** are cross-cutting — every controller uses them for consistent error and response formatting.
 ## Quick start
 
 ### 1. Clone and configure
